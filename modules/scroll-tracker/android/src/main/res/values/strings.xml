@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="scrolltracker_service_label">StopScroller</string>
+  <string name="scrolltracker_accessibility_description">StopScroller uses the Accessibility Service to detect reels and shorts in the apps you select, so it can count them and (optionally) block them when you hit your limit. Your data never leaves your device.</string>
+</resources>
