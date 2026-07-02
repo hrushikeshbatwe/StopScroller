@@ -1,7 +1,8 @@
 {
   "expo": {
     "name": "StopScroller",
-    "slug": "StopScroller",
+    "slug": "hrushikesh",
+    "owner": "gamerlinkogs-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -42,7 +43,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "bd512da9-df15-4997-9b80-c75e1109f27d"
+        "projectId": "be460d45-0c4a-4457-b600-089b0af9bb30"
       }
     }
   }
