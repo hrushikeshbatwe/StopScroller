@@ -78,7 +78,7 @@ class ScrollAccessibilityService : AccessibilityService() {
   }
 
   private fun updateOverlay(count: Int) {
-    if (ScrollStore.isOverlayEnabled(applicationContext) && Settings.canDrawOverlays(this)) {
+    if (ScrollStore.isOverlayEnabled(applicationContext) && OverlayPermission.canDraw(this)) {
       overlay?.show(count)
     } else {
       overlay?.hide()
@@ -126,7 +126,7 @@ class ScrollAccessibilityService : AccessibilityService() {
       block?.hide()
       return
     }
-    if (!android.provider.Settings.canDrawOverlays(this)) return // can't block without the permission
+    if (!OverlayPermission.canDraw(this)) return // can't block without the permission
 
     block?.show(
       count = count,
