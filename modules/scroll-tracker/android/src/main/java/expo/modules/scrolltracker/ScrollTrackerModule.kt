@@ -61,12 +61,12 @@ class ScrollTrackerModule : Module() {
 
     // --- Permissions / health ---
     Function("isAccessibilityEnabled") { isAccessibilityEnabled() }
-    Function("canDrawOverlays") { Settings.canDrawOverlays(context) }
+    Function("canDrawOverlays") { OverlayPermission.canDraw(context) }
     Function("isIgnoringBatteryOptimizations") { isIgnoringBatteryOptimizations() }
     Function("serviceHealth") {
       mapOf(
         "accessibilityEnabled" to isAccessibilityEnabled(),
-        "canDrawOverlays" to Settings.canDrawOverlays(context),
+        "canDrawOverlays" to OverlayPermission.canDraw(context),
         "ignoringBatteryOptimizations" to isIgnoringBatteryOptimizations(),
         "livenessAgeMs" to ScrollStore.getLivenessAgeMs(context).toDouble(),
         "lastEventAgeMs" to ScrollStore.getLastEventAgeMs(context).toDouble()
