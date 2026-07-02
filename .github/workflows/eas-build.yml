@@ -1,0 +1,57 @@
+name: EAS Build (Android)
+
+# Runs an EAS cloud build. Trigger it manually from the Actions tab and pick a profile.
+# Requires one repository secret: EXPO_TOKEN (Expo account access token).
+#   Create at https://expo.dev/accounts/[account]/settings/access-tokens
+#   Add at  Repo → Settings → Secrets and variables → Actions → New repository secret.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile (from eas.json)
+        type: choice
+        default: preview
+        options:
+          - development
+          - preview
+          - production
+
+jobs:
+  build:
+    name: Android · ${{ github.event.inputs.profile }}
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify EXPO_TOKEN is set
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::EXPO_TOKEN secret is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Set up EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run EAS build
+        run: |
+          eas build \
+            --platform android \
+            --profile "${{ github.event.inputs.profile }}" \
+            --non-interactive \
+            --no-wait
