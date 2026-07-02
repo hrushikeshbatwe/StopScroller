@@ -21,6 +21,7 @@ class ScrollAccessibilityService : AccessibilityService() {
   private var lastScanTime = 0L
 
   private var overlay: CounterOverlay? = null
+  private var block: BlockOverlay? = null
 
   companion object {
     // Don't scan the view tree more often than this (TYPE_VIEW_SCROLLED fires in bursts).
@@ -37,10 +38,12 @@ class ScrollAccessibilityService : AccessibilityService() {
     // R2: prove liveness immediately so the health check doesn't false-alarm right after (re)connect.
     ScrollStore.markLiveness(applicationContext)
     overlay = CounterOverlay(this)
+    block = BlockOverlay(this)
   }
 
   override fun onUnbind(intent: android.content.Intent?): Boolean {
     overlay?.hide()
+    block?.hide()
     return super.onUnbind(intent)
   }
 
@@ -54,13 +57,18 @@ class ScrollAccessibilityService : AccessibilityService() {
     val tracked = pkg in ScrollStore.TARGET_PACKAGES &&
       ScrollStore.isAppEnabled(applicationContext, pkg)
     if (!tracked) {
-      // Left a tracked app — take the floating counter down.
+      // Left a tracked app — take the floating counter and any block screen down.
       overlay?.hide()
+      block?.hide()
       return
     }
 
     // In a tracked app: show/refresh the floating counter bubble.
-    updateOverlay(ScrollStore.getCount(applicationContext))
+    val count = ScrollStore.getCount(applicationContext)
+    updateOverlay(count)
+    // Re-enforce the block on re-entry: if they're already over the cap, cover the app immediately
+    // without waiting for another reel to be counted.
+    maybeBlock(pkg, count)
 
     when (event.eventType) {
       AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
@@ -103,13 +111,29 @@ class ScrollAccessibilityService : AccessibilityService() {
     }
   }
 
-  /** Block-at-cap. Overlay is the primary mechanism (plan phase 5); wired in a later step. */
+  /**
+   * Block-at-cap. Covers the tracked app with a full-screen [BlockOverlay] once today's count
+   * reaches the user's cap. The overlay is the primary mechanism (plan phase 5); GLOBAL_ACTION_BACK
+   * stays out of it because it's blunt and can loop.
+   */
   private fun maybeBlock(pkg: String, count: Int) {
     val cap = ScrollStore.getCap(applicationContext)
-    if (count >= cap) {
-      // TODO(phase 5): show SYSTEM_ALERT_WINDOW overlay via BlockOverlay.
-      // GLOBAL_ACTION_BACK stays OPTIONAL/per-app because it's blunt and can loop.
+    val shouldBlock = ScrollStore.isBlockEnabled(applicationContext) &&
+      count >= cap &&
+      !ScrollStore.isSnoozed(applicationContext)
+
+    if (!shouldBlock) {
+      block?.hide()
+      return
     }
+    if (!android.provider.Settings.canDrawOverlays(this)) return // can't block without the permission
+
+    block?.show(
+      count = count,
+      cap = cap,
+      onClose = { performGlobalAction(GLOBAL_ACTION_HOME) },
+      onSnooze = { ScrollStore.snoozeBlock(applicationContext) }
+    )
   }
 
   override fun onInterrupt() {}

@@ -22,6 +22,10 @@ declare class ScrollTrackerModule extends NativeModule<ScrollTrackerEvents> {
   isOverlayEnabled(): boolean;
   setOverlayEnabled(on: boolean): void;
 
+  // Block-at-cap (daily-limit enforcement)
+  isBlockEnabled(): boolean;
+  setBlockEnabled(on: boolean): void;
+
   // Permissions / health
   isAccessibilityEnabled(): boolean;
   canDrawOverlays(): boolean;

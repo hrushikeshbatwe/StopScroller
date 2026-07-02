@@ -22,6 +22,7 @@ export default function SettingsScreen() {
   const [enabled, setEnabled] = useState<string[]>([]);
   const [cap, setCapState] = useState<number>(200);
   const [overlayOn, setOverlayOn] = useState<boolean>(true);
+  const [blockOn, setBlockOn] = useState<boolean>(true);
 
   const refresh = useCallback(() => {
     try {
@@ -30,6 +31,7 @@ export default function SettingsScreen() {
       setEnabled(ScrollTracker.getEnabledApps());
       setCapState(ScrollTracker.getCap());
       setOverlayOn(ScrollTracker.isOverlayEnabled());
+      setBlockOn(ScrollTracker.isBlockEnabled());
     } catch {
       // native module missing (web)
     }
@@ -90,7 +92,7 @@ export default function SettingsScreen() {
         />
         <PermissionCard
           title="Display Over Other Apps"
-          desc="Needed to block reels when you hit your limit (coming next update)."
+          desc="Needed for the floating counter and to block reels when you hit your daily limit."
           ok={!!health?.canDrawOverlays}
           cta="Allow"
           onPress={() => ScrollTracker.openOverlaySettings()}
@@ -140,7 +142,29 @@ export default function SettingsScreen() {
         {/* Daily limit */}
         <Text style={styles.section}>Daily limit</Text>
         <View style={styles.card}>
-          <Text style={styles.capHint}>Block reels after this many per day (blocking ships next update).</Text>
+          <View style={styles.appRow}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.appName}>Block reels at limit</Text>
+              <Text style={styles.capHint}>
+                When you hit your cap, StopScroller covers the app so the scroll stops. Needs the
+                &quot;Display over other apps&quot; permission above.
+              </Text>
+            </View>
+            <Switch
+              value={blockOn}
+              onValueChange={(on) => {
+                setBlockOn(on);
+                try {
+                  ScrollTracker.setBlockEnabled(on);
+                } catch {}
+              }}
+              trackColor={{ true: Palette.accent, false: Palette.border }}
+              thumbColor={Palette.text}
+            />
+          </View>
+          <View style={[styles.appRow, styles.divider]}>
+            <Text style={styles.capHint}>Stop me after this many reels per day:</Text>
+          </View>
           <View style={styles.capRow}>
             {CAP_PRESETS.map((v) => (
               <Pressable
