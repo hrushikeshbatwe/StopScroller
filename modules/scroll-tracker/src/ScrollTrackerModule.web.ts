@@ -31,6 +31,11 @@ class ScrollTrackerModule extends NativeModule<ScrollTrackerEvents> {
     return [];
   }
 
+  isOverlayEnabled(): boolean {
+    return false;
+  }
+  setOverlayEnabled(_on: boolean): void {}
+
   isAccessibilityEnabled(): boolean {
     return false;
   }

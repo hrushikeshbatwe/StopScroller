@@ -49,6 +49,10 @@ class ScrollTrackerModule : Module() {
     Function("setEnabledApps") { apps: List<String> -> ScrollStore.setEnabledApps(context, apps.toSet()) }
     Function("getTargetPackages") { ScrollStore.TARGET_PACKAGES }
 
+    // Floating counter overlay
+    Function("isOverlayEnabled") { ScrollStore.isOverlayEnabled(context) }
+    Function("setOverlayEnabled") { on: Boolean -> ScrollStore.setOverlayEnabled(context, on) }
+
     // --- Permissions / health ---
     Function("isAccessibilityEnabled") { isAccessibilityEnabled() }
     Function("canDrawOverlays") { Settings.canDrawOverlays(context) }

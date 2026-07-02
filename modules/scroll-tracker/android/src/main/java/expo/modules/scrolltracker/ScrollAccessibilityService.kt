@@ -1,6 +1,7 @@
 package expo.modules.scrolltracker
 
 import android.accessibilityservice.AccessibilityService
+import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 
 /**
@@ -19,6 +20,8 @@ class ScrollAccessibilityService : AccessibilityService() {
   private var lastCountTime = 0L
   private var lastScanTime = 0L
 
+  private var overlay: CounterOverlay? = null
+
   companion object {
     // Don't scan the view tree more often than this (TYPE_VIEW_SCROLLED fires in bursts).
     private const val MIN_SCAN_INTERVAL_MS = 120L
@@ -33,6 +36,12 @@ class ScrollAccessibilityService : AccessibilityService() {
     // rebind must NOT zero the count (that failure mode looks exactly like OEM battery-killing).
     // R2: prove liveness immediately so the health check doesn't false-alarm right after (re)connect.
     ScrollStore.markLiveness(applicationContext)
+    overlay = CounterOverlay(this)
+  }
+
+  override fun onUnbind(intent: android.content.Intent?): Boolean {
+    overlay?.hide()
+    return super.onUnbind(intent)
   }
 
   override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -42,13 +51,29 @@ class ScrollAccessibilityService : AccessibilityService() {
     // Data-quality signal only (NOT health): we saw traffic. Health uses the independent liveness ping.
     ScrollStore.markEvent(applicationContext)
 
-    if (pkg !in ScrollStore.TARGET_PACKAGES) return
-    if (!ScrollStore.isAppEnabled(applicationContext, pkg)) return
+    val tracked = pkg in ScrollStore.TARGET_PACKAGES &&
+      ScrollStore.isAppEnabled(applicationContext, pkg)
+    if (!tracked) {
+      // Left a tracked app — take the floating counter down.
+      overlay?.hide()
+      return
+    }
+
+    // In a tracked app: show/refresh the floating counter bubble.
+    updateOverlay(ScrollStore.getCount(applicationContext))
 
     when (event.eventType) {
       AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
       AccessibilityEvent.TYPE_VIEW_SCROLLED,
       AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> maybeCountReel(pkg)
+    }
+  }
+
+  private fun updateOverlay(count: Int) {
+    if (ScrollStore.isOverlayEnabled(applicationContext) && Settings.canDrawOverlays(this)) {
+      overlay?.show(count)
+    } else {
+      overlay?.hide()
     }
   }
 
@@ -72,6 +97,7 @@ class ScrollAccessibilityService : AccessibilityService() {
       if (now - lastCountTime >= MIN_COUNT_INTERVAL_MS) {
         lastCountTime = now
         val newCount = ScrollStore.increment(applicationContext, pkg)
+        overlay?.update(newCount)
         maybeBlock(pkg, newCount)
       }
     }

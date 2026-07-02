@@ -18,6 +18,10 @@ declare class ScrollTrackerModule extends NativeModule<ScrollTrackerEvents> {
   setEnabledApps(apps: string[]): void;
   getTargetPackages(): string[];
 
+  // Floating counter overlay
+  isOverlayEnabled(): boolean;
+  setOverlayEnabled(on: boolean): void;
+
   // Permissions / health
   isAccessibilityEnabled(): boolean;
   canDrawOverlays(): boolean;

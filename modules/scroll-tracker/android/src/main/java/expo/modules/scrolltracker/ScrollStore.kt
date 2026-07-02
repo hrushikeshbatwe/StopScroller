@@ -31,6 +31,7 @@ object ScrollStore {
   private const val KEY_HISTORY = "history_json"  // JSONArray of {date,count}
   private const val KEY_LAST_EVENT = "last_event_ts"  // last accessibility event (data-quality, R2)
   private const val KEY_LIVENESS = "liveness_ping"    // independent service-alive ping (health, R2)
+  private const val KEY_OVERLAY = "overlay_enabled"   // show the floating counter bubble
   private const val PER_APP_PREFIX = "count_pkg_"
 
   const val DEFAULT_CAP = 100000 // effectively "off" until the user sets a real cap
@@ -182,6 +183,12 @@ object ScrollStore {
   }
 
   fun isAppEnabled(context: Context, pkg: String): Boolean = pkg in getEnabledApps(context)
+
+  fun isOverlayEnabled(context: Context): Boolean = sp(context).getBoolean(KEY_OVERLAY, true)
+
+  fun setOverlayEnabled(context: Context, on: Boolean) {
+    sp(context).edit().putBoolean(KEY_OVERLAY, on).apply()
+  }
 
   // --- Reliability (R2) ---------------------------------------------------------------------------
 

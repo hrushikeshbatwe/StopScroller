@@ -21,6 +21,7 @@ export default function SettingsScreen() {
   const [targets, setTargets] = useState<string[]>([]);
   const [enabled, setEnabled] = useState<string[]>([]);
   const [cap, setCapState] = useState<number>(200);
+  const [overlayOn, setOverlayOn] = useState<boolean>(true);
 
   const refresh = useCallback(() => {
     try {
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
       setTargets(ScrollTracker.getTargetPackages());
       setEnabled(ScrollTracker.getEnabledApps());
       setCapState(ScrollTracker.getCap());
+      setOverlayOn(ScrollTracker.isOverlayEnabled());
     } catch {
       // native module missing (web)
     }
@@ -108,6 +110,31 @@ export default function SettingsScreen() {
               />
             </View>
           ))}
+        </View>
+
+        {/* Floating counter */}
+        <Text style={styles.section}>Floating counter</Text>
+        <View style={styles.card}>
+          <View style={styles.appRow}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.appName}>Show bubble over apps</Text>
+              <Text style={styles.capHint}>
+                A live count floats on top of Instagram/YouTube while you scroll. Needs the
+                &quot;Display over other apps&quot; permission above.
+              </Text>
+            </View>
+            <Switch
+              value={overlayOn}
+              onValueChange={(on) => {
+                setOverlayOn(on);
+                try {
+                  ScrollTracker.setOverlayEnabled(on);
+                } catch {}
+              }}
+              trackColor={{ true: Palette.accent, false: Palette.border }}
+              thumbColor={Palette.text}
+            />
+          </View>
         </View>
 
         {/* Daily limit */}
