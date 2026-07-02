@@ -6,6 +6,8 @@
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+  <!-- Nothing Phone (3) Glyph Matrix (back-of-phone LED display) -->
+  <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
 
   <application>
     <service
@@ -19,6 +21,21 @@
       <meta-data
           android:name="android.accessibilityservice"
           android:resource="@xml/scrolltracker_accessibility_config" />
+    </service>
+
+    <!-- Glyph Toy: shows the live reel count on the Nothing Phone (3) back matrix. -->
+    <service
+        android:name="expo.modules.scrolltracker.GlyphCountService"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="com.nothing.glyph.TOY" />
+      </intent-filter>
+      <meta-data
+          android:name="com.nothing.glyph.toy.name"
+          android:resource="@string/glyph_toy_name" />
+      <meta-data
+          android:name="com.nothing.glyph.toy.image"
+          android:resource="@drawable/glyph_toy_preview" />
     </service>
   </application>
 

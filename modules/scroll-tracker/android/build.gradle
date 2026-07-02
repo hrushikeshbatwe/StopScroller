@@ -16,3 +16,9 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  // Nothing Glyph Matrix SDK — drop glyph-matrix-sdk-2.0.aar into ./libs (see libs/README.md).
+  // Only needed for the Phone (3) Glyph Toy; the rest of the module builds without it.
+  implementation fileTree(dir: "libs", include: ["*.aar"])
+}
