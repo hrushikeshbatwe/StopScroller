@@ -27,6 +27,24 @@ object ReelSelectors {
     "com.snapchat.android" to listOf("spotlight", "discover_feed", "playback")
   )
 
+  // Substrings that indicate a comment / engagement sheet. These match static buttons too (e.g. the
+  // comment-count button that's always on a reel), so a match only counts as an OPEN sheet when the
+  // node is also large and sits in the lower part of the screen (see [isOpenSheet]).
+  private val commentPanelHints: Map<String, List<String>> = mapOf(
+    "com.instagram.android" to listOf("comment", "bottom_sheet"),
+    "com.google.android.youtube" to listOf("engagement_panel", "comment", "bottom_sheet"),
+    "com.facebook.katana" to listOf("comment", "bottom_sheet"),
+    "com.snapchat.android" to listOf("comment", "bottom_sheet")
+  )
+
+  /**
+   * Returned instead of a signature when the user is in the feed but a comment/engagement sheet is
+   * open. The caller must treat this as "ignore this sample" — do NOT count and do NOT update the
+   * last-seen signature — so that opening a sheet, scrolling it, and swiping it closed on the SAME
+   * short never registers as new shorts.
+   */
+  const val HOLD = "__hold__"
+
   private const val MAX_NODES = 3000
 
   /**
@@ -39,12 +57,15 @@ object ReelSelectors {
     pkg: String
   ): String? {
     val hints = feedIdHints[pkg] ?: return null
+    val panelHints = commentPanelHints[pkg] ?: emptyList()
 
     val dm = service.resources.displayMetrics
     val cx = dm.widthPixels / 2
     val cy = dm.heightPixels / 2
+    val screenH = dm.heightPixels
 
     var inFeed = false
+    var sheetOpen = false
     var bestArea = -1L
     var bestSig: String? = null
 
@@ -61,6 +82,10 @@ object ReelSelectors {
       if (id != null) {
         val lower = id.lowercase()
         if (!inFeed && hints.any { lower.contains(it) }) inFeed = true
+        if (!sheetOpen && panelHints.any { lower.contains(it) }) {
+          node.getBoundsInScreen(rect)
+          if (isOpenSheet(rect, screenH)) sheetOpen = true
+        }
       }
 
       // Candidate for "the current reel": a described node that covers screen-center and is large.
@@ -83,9 +108,19 @@ object ReelSelectors {
     }
 
     if (!inFeed) return null
+    // A comment/engagement sheet is up: freeze counting until it's dismissed (see [HOLD]). Without
+    // this, the sheet's own described nodes become the center-candidate and opening/closing it on the
+    // same short falsely reads as new shorts.
+    if (sheetOpen) return HOLD
     // In the feed but nothing described at center yet (still loading): return a constant so we don't
     // spuriously count the same reel repeatedly while it settles.
     val sig = bestSig ?: "feed:$pkg"
     return sig.hashCode().toString()
+  }
+
+  /** A real, open bottom sheet: tall and anchored in the lower screen — not a small static button. */
+  private fun isOpenSheet(rect: Rect, screenH: Int): Boolean {
+    if (rect.width() <= 0 || rect.height() <= 0) return false
+    return rect.height() > screenH * 0.35 && rect.top > screenH * 0.12
   }
 }
