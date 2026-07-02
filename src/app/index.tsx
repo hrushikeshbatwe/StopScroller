@@ -1,98 +1,112 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { BrainMeter } from '@/components/brain-meter';
+import { Palette, brainStateFor } from '@/constants/palette';
+import { useScrollTracker } from '@/hooks/use-scroll-tracker';
 
 export default function HomeScreen() {
+  const { count, health } = useScrollTracker();
+  const state = brainStateFor(count);
+  const needsSetup = !health?.accessibilityEnabled;
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.brand}>StopScroller</Text>
+            <Text style={styles.tagline}>Know your count. Stop in time.</Text>
+          </View>
+          <Link href="/settings" asChild>
+            <Pressable hitSlop={12} style={styles.gear}>
+              <Text style={styles.gearIcon}>⚙️</Text>
+            </Pressable>
+          </Link>
+        </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        {/* setup warning */}
+        {needsSetup && (
+          <Link href="/settings" asChild>
+            <Pressable style={styles.warnBanner}>
+              <Text style={styles.warnTitle}>⚠️  Tracking is off</Text>
+              <Text style={styles.warnText}>
+                Enable the accessibility service so StopScroller can count your reels. Tap to set up →
+              </Text>
+            </Pressable>
+          </Link>
+        )}
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        {/* the brain */}
+        <View style={styles.meterWrap}>
+          <BrainMeter count={count} />
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        {/* status card */}
+        <View style={[styles.statusCard, { borderColor: state.color + '55' }]}>
+          <View style={[styles.dot, { backgroundColor: state.color }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.statusLabel, { color: state.color }]}>{state.label}</Text>
+            <Text style={styles.statusBlurb}>{state.blurb}</Text>
+          </View>
+        </View>
+
+        {/* footer hint */}
+        <Text style={styles.footer}>
+          {health?.accessibilityEnabled
+            ? 'Open Instagram Reels or YouTube Shorts — your count climbs live.'
+            : 'Setup takes 30 seconds.'}
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  safe: { flex: 1, backgroundColor: Palette.bg },
+  content: { padding: 20, gap: 24, flexGrow: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  brand: { fontSize: 26, fontWeight: '800', color: Palette.text, letterSpacing: -0.5 },
+  tagline: { fontSize: 13, color: Palette.textDim, marginTop: 2 },
+  gear: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Palette.bgElevated,
+    alignItems: 'center',
     justifyContent: 'center',
+  },
+  gearIcon: { fontSize: 20 },
+  warnBanner: {
+    backgroundColor: '#2A1A0A',
+    borderColor: Palette.warning + '66',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 16,
+    gap: 4,
+  },
+  warnTitle: { color: Palette.warning, fontWeight: '700', fontSize: 15 },
+  warnText: { color: Palette.textDim, fontSize: 13, lineHeight: 18 },
+  meterWrap: { alignItems: 'center', marginTop: 8 },
+  statusCard: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    gap: 14,
+    backgroundColor: Palette.bgCard,
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 18,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  statusLabel: { fontSize: 17, fontWeight: '700' },
+  statusBlurb: { fontSize: 13, color: Palette.textDim, marginTop: 2 },
+  footer: {
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+    color: Palette.textFaint,
+    fontSize: 12,
+    marginTop: 'auto',
+    paddingTop: 12,
   },
 });
