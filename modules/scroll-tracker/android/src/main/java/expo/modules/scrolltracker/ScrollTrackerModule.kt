@@ -91,28 +91,23 @@ class ScrollTrackerModule : Module() {
   private fun isAccessibilityEnabled(): Boolean {
     val expected = ComponentName(context, ScrollAccessibilityService::class.java)
 
-    // Primary check: read the system setting directly. This is reliable across OEM skins and older
-    // Android versions, where AccessibilityManager.getEnabledAccessibilityServiceList() can return a
-    // stale/empty list even though our service is actually enabled (the "settings are off" bug).
+    // Primary check: read the enabled-services list from the system settings directly. This is
+    // reliable across OEM skins and older Android versions, where AccessibilityManager
+    // .getEnabledAccessibilityServiceList() can return a stale/empty list even though our service is
+    // actually enabled (the "settings are off" bug). We deliberately do NOT gate on the global
+    // ACCESSIBILITY_ENABLED flag, which lags on some ROMs — the services list is the source of truth.
     try {
-      val on = Settings.Secure.getInt(
+      val flat = Settings.Secure.getString(
         context.contentResolver,
-        Settings.Secure.ACCESSIBILITY_ENABLED,
-        0
+        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
       )
-      if (on == 1) {
-        val flat = Settings.Secure.getString(
-          context.contentResolver,
-          Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        )
-        if (!flat.isNullOrEmpty()) {
-          val splitter = TextUtils.SimpleStringSplitter(':')
-          splitter.setString(flat)
-          for (name in splitter) {
-            // unflattenFromString expands the short "pkg/.Class" form to a full ComponentName,
-            // so equality holds regardless of how the OS stored it.
-            if (ComponentName.unflattenFromString(name) == expected) return true
-          }
+      if (!flat.isNullOrEmpty()) {
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(flat)
+        for (name in splitter) {
+          // unflattenFromString expands the short "pkg/.Class" form to a full ComponentName,
+          // so equality holds regardless of how the OS stored it.
+          if (ComponentName.unflattenFromString(name) == expected) return true
         }
       }
     } catch (_: Throwable) {
