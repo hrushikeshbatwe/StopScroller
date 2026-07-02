@@ -11,11 +11,15 @@ import { ScrollTracker, type ServiceHealth } from '../../modules/scroll-tracker'
 export function useScrollTracker() {
   const [count, setCount] = useState(0);
   const [health, setHealth] = useState<ServiceHealth | null>(null);
+  const [cap, setCap] = useState<number>(0);
+  const [bestLow, setBestLow] = useState<number>(-1);
 
   const refresh = useCallback(() => {
     try {
       setCount(ScrollTracker.getCount());
       setHealth(ScrollTracker.serviceHealth());
+      setCap(ScrollTracker.getCap());
+      setBestLow(ScrollTracker.getBestLow());
     } catch {
       // native module unavailable (e.g. web) — leave defaults
     }
@@ -35,5 +39,5 @@ export function useScrollTracker() {
     };
   }, [refresh]);
 
-  return { count, health, refresh };
+  return { count, health, cap, bestLow, refresh };
 }

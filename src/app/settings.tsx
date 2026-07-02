@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Palette } from '@/constants/palette';
+import { Palette, Radius, Space, Type, tint } from '@/constants/palette';
 import { ScrollTracker, type ServiceHealth } from '../../modules/scroll-tracker';
 
 const APP_NAMES: Record<string, string> = {
@@ -63,11 +63,15 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} hitSlop={12} style={styles.back}>
+          <Pressable
+            onPress={() => router.back()}
+            hitSlop={12}
+            accessibilityLabel="Go back"
+            style={({ pressed }) => [styles.back, pressed && styles.pressed]}>
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>
           <Text style={styles.title}>Setup</Text>
-          <Pressable onPress={refresh} hitSlop={12}>
+          <Pressable onPress={refresh} hitSlop={12} style={({ pressed }) => pressed && styles.pressed}>
             <Text style={styles.recheck}>Re-check</Text>
           </Pressable>
         </View>
@@ -102,8 +106,8 @@ export default function SettingsScreen() {
         <Text style={styles.section}>Tracked apps</Text>
         <View style={styles.card}>
           {targets.map((pkg, i) => (
-            <View key={pkg} style={[styles.appRow, i > 0 && styles.divider]}>
-              <Text style={styles.appName}>{APP_NAMES[pkg] ?? pkg}</Text>
+            <View key={pkg} style={[styles.row, i > 0 && styles.divider]}>
+              <Text style={styles.rowTitle}>{APP_NAMES[pkg] ?? pkg}</Text>
               <Switch
                 value={enabled.includes(pkg)}
                 onValueChange={(on) => toggleApp(pkg, on)}
@@ -117,72 +121,92 @@ export default function SettingsScreen() {
         {/* Floating counter */}
         <Text style={styles.section}>Floating counter</Text>
         <View style={styles.card}>
-          <View style={styles.appRow}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.appName}>Show bubble over apps</Text>
-              <Text style={styles.capHint}>
-                A live count floats on top of Instagram/YouTube while you scroll. Needs the
-                &quot;Display over other apps&quot; permission above.
-              </Text>
-            </View>
-            <Switch
-              value={overlayOn}
-              onValueChange={(on) => {
-                setOverlayOn(on);
-                try {
-                  ScrollTracker.setOverlayEnabled(on);
-                } catch {}
-              }}
-              trackColor={{ true: Palette.accent, false: Palette.border }}
-              thumbColor={Palette.text}
-            />
-          </View>
+          <ToggleRow
+            title="Show bubble over apps"
+            hint="A live count floats on top of Instagram / YouTube while you scroll. Needs the “Display over other apps” permission above."
+            value={overlayOn}
+            onChange={(on) => {
+              setOverlayOn(on);
+              try {
+                ScrollTracker.setOverlayEnabled(on);
+              } catch {}
+            }}
+          />
         </View>
 
         {/* Daily limit */}
         <Text style={styles.section}>Daily limit</Text>
         <View style={styles.card}>
-          <View style={styles.appRow}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.appName}>Block reels at limit</Text>
-              <Text style={styles.capHint}>
-                When you hit your cap, StopScroller covers the app so the scroll stops. Needs the
-                &quot;Display over other apps&quot; permission above.
-              </Text>
+          <ToggleRow
+            title="Block reels at limit"
+            hint="When you hit your cap, StopScroller covers the app so the scroll stops. Needs the “Display over other apps” permission above."
+            value={blockOn}
+            onChange={(on) => {
+              setBlockOn(on);
+              try {
+                ScrollTracker.setBlockEnabled(on);
+              } catch {}
+            }}
+          />
+          <View style={[styles.divider, { paddingTop: Space.base }]}>
+            <Text style={styles.hint}>Stop me after this many reels per day</Text>
+            <View style={styles.capRow}>
+              {CAP_PRESETS.map((v) => {
+                const on = cap === v;
+                return (
+                  <Pressable
+                    key={v}
+                    onPress={() => chooseCap(v)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    style={({ pressed }) => [
+                      styles.capChip,
+                      on && styles.capChipOn,
+                      pressed && !on && styles.pressed,
+                    ]}>
+                    <Text style={[styles.capChipText, on && styles.capChipTextOn]}>{v}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-            <Switch
-              value={blockOn}
-              onValueChange={(on) => {
-                setBlockOn(on);
-                try {
-                  ScrollTracker.setBlockEnabled(on);
-                } catch {}
-              }}
-              trackColor={{ true: Palette.accent, false: Palette.border }}
-              thumbColor={Palette.text}
-            />
-          </View>
-          <View style={[styles.appRow, styles.divider]}>
-            <Text style={styles.capHint}>Stop me after this many reels per day:</Text>
-          </View>
-          <View style={styles.capRow}>
-            {CAP_PRESETS.map((v) => (
-              <Pressable
-                key={v}
-                onPress={() => chooseCap(v)}
-                style={[styles.capChip, cap === v && styles.capChipOn]}>
-                <Text style={[styles.capChipText, cap === v && styles.capChipTextOn]}>{v}</Text>
-              </Pressable>
-            ))}
           </View>
         </View>
 
         {/* Danger zone */}
-        <Pressable style={styles.reset} onPress={() => ScrollTracker.resetToday()}>
-          <Text style={styles.resetText}>Reset today&apos;s count</Text>
+        <Pressable
+          style={({ pressed }) => [styles.reset, pressed && styles.pressed]}
+          onPress={() => ScrollTracker.resetToday()}>
+          <Text style={styles.resetText}>Reset today’s count</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ToggleRow({
+  title,
+  hint,
+  value,
+  onChange,
+}: {
+  title: string;
+  hint: string;
+  value: boolean;
+  onChange: (on: boolean) => void;
+}) {
+  return (
+    <View style={styles.row}>
+      <View style={{ flex: 1, paddingRight: Space.md }}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={styles.hint}>{hint}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        trackColor={{ true: Palette.accent, false: Palette.border }}
+        thumbColor={Palette.text}
+      />
+    </View>
   );
 }
 
@@ -205,7 +229,11 @@ function PermissionCard({
     <View style={styles.card}>
       <View style={styles.permTop}>
         <Text style={styles.permTitle}>{title}</Text>
-        <View style={[styles.pill, { backgroundColor: ok ? Palette.healthy + '22' : Palette.border }]}>
+        <View
+          style={[
+            styles.pill,
+            { backgroundColor: ok ? tint(Palette.healthy, 0.16) : Palette.bgCardHi },
+          ]}>
           <Text style={[styles.pillText, { color: ok ? Palette.healthy : Palette.textDim }]}>
             {ok ? '✓ On' : required ? 'Required' : 'Off'}
           </Text>
@@ -213,7 +241,10 @@ function PermissionCard({
       </View>
       <Text style={styles.permDesc}>{desc}</Text>
       {!ok && (
-        <Pressable style={styles.permBtn} onPress={onPress}>
+        <Pressable
+          style={({ pressed }) => [styles.permBtn, pressed && styles.pressedBtn]}
+          onPress={onPress}
+          accessibilityRole="button">
           <Text style={styles.permBtnText}>{cta}</Text>
         </Pressable>
       )}
@@ -223,66 +254,91 @@ function PermissionCard({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Palette.bg },
-  content: { padding: 20, gap: 12, paddingBottom: 40 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  backIcon: { color: Palette.text, fontSize: 32, lineHeight: 34 },
-  title: { color: Palette.text, fontSize: 20, fontWeight: '800' },
-  recheck: { color: Palette.accent, fontSize: 14, fontWeight: '600' },
+  content: { padding: Space.lg, gap: Space.md, paddingBottom: Space.huge },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Space.xs,
+  },
+  back: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.bgCard,
+    borderWidth: 1,
+    borderColor: Palette.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: { color: Palette.text, fontSize: 26, lineHeight: 28, marginTop: -2 },
+  title: { color: Palette.text, ...Type.title, fontSize: 22 },
+  recheck: { color: Palette.accent, ...Type.bodyStrong },
+  pressed: { opacity: 0.6 },
+  pressedBtn: { opacity: 0.85 },
+
   section: {
+    ...Type.overline,
     color: Palette.textFaint,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginTop: 16,
-    marginBottom: 2,
+    marginTop: Space.base,
+    marginBottom: Space.xs,
+    marginLeft: Space.xs,
   },
   card: {
     backgroundColor: Palette.bgCard,
     borderWidth: 1,
     borderColor: Palette.border,
-    borderRadius: 16,
-    padding: 16,
-    gap: 10,
+    borderRadius: Radius.card,
+    padding: Space.base,
   },
+
   permTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  permTitle: { color: Palette.text, fontSize: 16, fontWeight: '700', flex: 1 },
-  permDesc: { color: Palette.textDim, fontSize: 13, lineHeight: 18 },
-  pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  pillText: { fontSize: 12, fontWeight: '700' },
+  permTitle: { color: Palette.text, ...Type.heading, flex: 1, paddingRight: Space.sm },
+  permDesc: { color: Palette.textDim, ...Type.caption, lineHeight: 19, marginTop: Space.sm },
+  pill: { paddingHorizontal: Space.md, paddingVertical: Space.xs, borderRadius: Radius.pill },
+  pillText: { ...Type.caption, fontWeight: '700' },
   permBtn: {
     backgroundColor: Palette.accent,
-    borderRadius: 12,
-    paddingVertical: 11,
+    borderRadius: Radius.control,
+    paddingVertical: Space.md,
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: Space.md,
   },
-  permBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  appRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
-  divider: { borderTopWidth: 1, borderTopColor: Palette.border },
-  appName: { color: Palette.text, fontSize: 16 },
-  capHint: { color: Palette.textDim, fontSize: 13, lineHeight: 18 },
-  capRow: { flexDirection: 'row', gap: 10 },
+  permBtnText: { color: Palette.accentInk, fontWeight: '700', fontSize: 15 },
+
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Space.sm },
+  divider: { borderTopWidth: 1, borderTopColor: Palette.border, marginTop: Space.xs },
+  rowTitle: { color: Palette.text, ...Type.bodyStrong, fontSize: 16 },
+  hint: { color: Palette.textDim, ...Type.caption, lineHeight: 19, marginTop: 2 },
+
+  capRow: { flexDirection: 'row', gap: Space.sm, marginTop: Space.md },
   capChip: {
     flex: 1,
     backgroundColor: Palette.bgElevated,
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: Radius.control,
+    paddingVertical: Space.md,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Palette.border,
   },
   capChipOn: { backgroundColor: Palette.accent, borderColor: Palette.accent },
-  capChipText: { color: Palette.textDim, fontWeight: '700', fontSize: 15 },
-  capChipTextOn: { color: '#fff' },
+  capChipText: {
+    color: Palette.textDim,
+    fontWeight: '700',
+    fontSize: 15,
+    fontVariant: ['tabular-nums'],
+  },
+  capChipTextOn: { color: Palette.accentInk },
+
   reset: {
-    marginTop: 20,
+    marginTop: Space.base,
     alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: Space.base,
+    borderRadius: Radius.control,
     borderWidth: 1,
-    borderColor: Palette.danger + '55',
+    borderColor: tint(Palette.danger, 0.4),
+    backgroundColor: tint(Palette.danger, 0.06),
   },
   resetText: { color: Palette.danger, fontWeight: '600', fontSize: 15 },
 });
