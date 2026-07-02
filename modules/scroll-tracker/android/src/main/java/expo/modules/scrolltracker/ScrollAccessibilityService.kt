@@ -95,6 +95,11 @@ class ScrollAccessibilityService : AccessibilityService() {
 
     val root = rootInActiveWindow ?: return
     val sig = ReelSelectors.currentReelSignature(this, root, pkg)
+    if (sig == ReelSelectors.HOLD) {
+      // A comment/engagement sheet is open — ignore this sample entirely. Crucially we keep
+      // lastSignature untouched so swiping the sheet closed onto the SAME short doesn't count.
+      return
+    }
     if (sig == null) {
       // Left the reels feed; forget the last signature so re-entering counts the next reel fresh.
       lastSignature = null
