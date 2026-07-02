@@ -1,11 +1,13 @@
 package expo.modules.scrolltracker
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.TextUtils
 import android.view.accessibility.AccessibilityManager
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -87,13 +89,44 @@ class ScrollTrackerModule : Module() {
   }
 
   private fun isAccessibilityEnabled(): Boolean {
+    val expected = ComponentName(context, ScrollAccessibilityService::class.java)
+
+    // Primary check: read the system setting directly. This is reliable across OEM skins and older
+    // Android versions, where AccessibilityManager.getEnabledAccessibilityServiceList() can return a
+    // stale/empty list even though our service is actually enabled (the "settings are off" bug).
+    try {
+      val on = Settings.Secure.getInt(
+        context.contentResolver,
+        Settings.Secure.ACCESSIBILITY_ENABLED,
+        0
+      )
+      if (on == 1) {
+        val flat = Settings.Secure.getString(
+          context.contentResolver,
+          Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )
+        if (!flat.isNullOrEmpty()) {
+          val splitter = TextUtils.SimpleStringSplitter(':')
+          splitter.setString(flat)
+          for (name in splitter) {
+            // unflattenFromString expands the short "pkg/.Class" form to a full ComponentName,
+            // so equality holds regardless of how the OS stored it.
+            if (ComponentName.unflattenFromString(name) == expected) return true
+          }
+        }
+      }
+    } catch (_: Throwable) {
+      // fall through to the manager-based check below
+    }
+
+    // Fallback: the live manager list (works fine on modern Android).
     val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
       ?: return false
     val services = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-    val expected = ScrollAccessibilityService::class.java.name
+    val expectedName = ScrollAccessibilityService::class.java.name
     return services.any {
       val info = it.resolveInfo.serviceInfo
-      info.packageName == context.packageName && info.name == expected
+      info.packageName == context.packageName && info.name == expectedName
     }
   }
 
