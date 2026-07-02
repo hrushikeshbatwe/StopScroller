@@ -32,7 +32,11 @@ object ScrollStore {
   private const val KEY_LAST_EVENT = "last_event_ts"  // last accessibility event (data-quality, R2)
   private const val KEY_LIVENESS = "liveness_ping"    // independent service-alive ping (health, R2)
   private const val KEY_OVERLAY = "overlay_enabled"   // show the floating counter bubble
+  private const val KEY_BLOCK = "block_enabled"       // block reels once the cap is hit
+  private const val KEY_SNOOZE_UNTIL = "block_snooze_until"  // grace window after "5 more minutes"
   private const val PER_APP_PREFIX = "count_pkg_"
+
+  const val SNOOZE_MS = 5 * 60 * 1000L
 
   const val DEFAULT_CAP = 100000 // effectively "off" until the user sets a real cap
 
@@ -189,6 +193,22 @@ object ScrollStore {
   fun setOverlayEnabled(context: Context, on: Boolean) {
     sp(context).edit().putBoolean(KEY_OVERLAY, on).apply()
   }
+
+  // --- Blocking (daily-limit enforcement) ---------------------------------------------------------
+
+  fun isBlockEnabled(context: Context): Boolean = sp(context).getBoolean(KEY_BLOCK, true)
+
+  fun setBlockEnabled(context: Context, on: Boolean) {
+    sp(context).edit().putBoolean(KEY_BLOCK, on).apply()
+  }
+
+  /** Start a short grace window during which blocking is suppressed ("5 more minutes"). */
+  fun snoozeBlock(context: Context) {
+    sp(context).edit().putLong(KEY_SNOOZE_UNTIL, System.currentTimeMillis() + SNOOZE_MS).apply()
+  }
+
+  fun isSnoozed(context: Context): Boolean =
+    System.currentTimeMillis() < sp(context).getLong(KEY_SNOOZE_UNTIL, 0L)
 
   // --- Reliability (R2) ---------------------------------------------------------------------------
 

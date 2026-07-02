@@ -53,6 +53,10 @@ class ScrollTrackerModule : Module() {
     Function("isOverlayEnabled") { ScrollStore.isOverlayEnabled(context) }
     Function("setOverlayEnabled") { on: Boolean -> ScrollStore.setOverlayEnabled(context, on) }
 
+    // Block-at-cap (daily-limit enforcement)
+    Function("isBlockEnabled") { ScrollStore.isBlockEnabled(context) }
+    Function("setBlockEnabled") { on: Boolean -> ScrollStore.setBlockEnabled(context, on) }
+
     // --- Permissions / health ---
     Function("isAccessibilityEnabled") { isAccessibilityEnabled() }
     Function("canDrawOverlays") { Settings.canDrawOverlays(context) }
