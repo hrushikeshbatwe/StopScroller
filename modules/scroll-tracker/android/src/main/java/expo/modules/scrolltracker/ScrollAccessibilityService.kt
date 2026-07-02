@@ -78,11 +78,14 @@ class ScrollAccessibilityService : AccessibilityService() {
   }
 
   private fun updateOverlay(count: Int) {
-    if (ScrollStore.isOverlayEnabled(applicationContext) && OverlayPermission.canDraw(this)) {
-      overlay?.show(count)
-    } else {
+    if (!ScrollStore.isOverlayEnabled(applicationContext)) {
       overlay?.hide()
+      return
     }
+    // Attempt to draw regardless of what canDrawOverlays()/AppOps report — those misreport on some
+    // Android 14 ROMs. CounterOverlay.show() wraps addView in try/catch, so this is a safe no-op if
+    // the permission genuinely isn't granted, and it works the moment it actually is.
+    overlay?.show(count)
   }
 
   private fun maybeCountReel(pkg: String) {
@@ -126,8 +129,8 @@ class ScrollAccessibilityService : AccessibilityService() {
       block?.hide()
       return
     }
-    if (!OverlayPermission.canDraw(this)) return // can't block without the permission
-
+    // Don't pre-gate on canDrawOverlays()/AppOps (they misreport on some Android 14 ROMs).
+    // BlockOverlay.show() wraps addView in try/catch, so a genuinely missing permission is a no-op.
     block?.show(
       count = count,
       cap = cap,
